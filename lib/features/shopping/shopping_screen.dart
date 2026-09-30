@@ -20,13 +20,13 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   final _dismissed = <String>{};
 
   Future<void> _toggle(ShoppingEntry e) async {
-    final expiry = await ref.read(databaseProvider).toggleShopping(e);
+    final added = await ref.read(databaseProvider).toggleShopping(e);
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
     messenger.showSnackBar(SnackBar(
       duration: const Duration(seconds: 2),
-      content: Text(expiry != null
-          ? '${e.ingredient.emoji} ${e.ingredient.name} dolaba eklendi · SKT ${shortDate(expiry)}'
+      content: Text(added
+          ? '${e.ingredient.emoji} ${e.ingredient.name} dolaba eklendi'
           : '${e.ingredient.name} dolaptan geri alındı'),
     ));
   }
@@ -179,7 +179,7 @@ class _ProgressCard extends StatelessWidget {
                             fontSize: 22, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 4),
                     Text(
-                      'İşaretlediklerin tahmini SKT ile dolaba eklenir.',
+                      'İşaretlediklerin dolaba eklenir.',
                       style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
                     ),
                   ],

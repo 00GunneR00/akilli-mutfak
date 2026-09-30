@@ -44,8 +44,7 @@ class _QuickAddScreenState extends ConsumerState<QuickAddScreen> {
       if (line != null) {
         line.quantity += i.defaultQty;
       } else {
-        _cart.add(CartLine(
-            i, i.defaultQty, addDays(DateTime.now(), i.shelfDays)));
+        _cart.add(CartLine(i, i.defaultQty));
       }
     });
   }
@@ -63,7 +62,6 @@ class _QuickAddScreenState extends ConsumerState<QuickAddScreen> {
       isScrollControlled: true,
       builder: (_) => _LineEditor(
         line: line,
-        showExpiry: _isPantry,
         onChanged: () => setState(() {}),
         onRemove: () => setState(() => _cart.remove(line)),
       ),
@@ -166,7 +164,6 @@ class _QuickAddScreenState extends ConsumerState<QuickAddScreen> {
           if (_cart.isNotEmpty)
             _CartPanel(
               cart: _cart,
-              showExpiry: _isPantry,
               onEdit: _editLine,
               onSubmit: _submit,
               submitLabel: _isPantry ? 'Dolaba ekle' : 'Listeye ekle',
@@ -288,7 +285,7 @@ class _CatalogBrowserState extends State<_CatalogBrowser> {
             children: [
               Icon(Icons.touch_app_outlined, size: 16, color: text.bodySmall?.color),
               const SizedBox(width: 6),
-              Text('Dokun: ekle · Basılı tut: miktar ve SKT', style: text.bodySmall),
+              Text('Dokun: ekle · Basılı tut: miktar', style: text.bodySmall),
             ],
           ),
         ),
@@ -489,7 +486,7 @@ class _SearchResults extends StatelessWidget {
                 leading: EmojiBadge(i.emoji, size: 44),
                 title: Text(i.name,
                     style: const TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: Text('${i.category} · ~${i.shelfDays} gün dayanır'),
+                subtitle: Text(i.category),
                 trailing: Icon(Icons.add_circle_rounded, color: scheme.primary),
                 onTap: () => onPick(i),
               ),
@@ -525,14 +522,12 @@ class _SearchResults extends StatelessWidget {
 class _CartPanel extends StatelessWidget {
   const _CartPanel({
     required this.cart,
-    required this.showExpiry,
     required this.onEdit,
     required this.onSubmit,
     required this.submitLabel,
   });
 
   final List<CartLine> cart;
-  final bool showExpiry;
   final ValueChanged<CartLine> onEdit;
   final VoidCallback onSubmit;
   final String submitLabel;
@@ -600,10 +595,7 @@ class _CartPanel extends StatelessWidget {
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w700)),
                                 Text(
-                                  [
-                                    '${formatQty(l.quantity)} ${l.ingredient.unit}',
-                                    if (showExpiry) shortDate(l.expiry),
-                                  ].join(' · '),
+                                  '${formatQty(l.quantity)} ${l.ingredient.unit}',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ],
@@ -637,13 +629,11 @@ class _CartPanel extends StatelessWidget {
 class _LineEditor extends StatefulWidget {
   const _LineEditor({
     required this.line,
-    required this.showExpiry,
     required this.onChanged,
     required this.onRemove,
   });
 
   final CartLine line;
-  final bool showExpiry;
   final VoidCallback onChanged;
   final VoidCallback onRemove;
 
@@ -683,13 +673,6 @@ class _LineEditorState extends State<_LineEditor> {
               unit: l.ingredient.unit,
               onChanged: (q) => _update(() => l.quantity = q),
             ),
-            if (widget.showExpiry) ...[
-              const SizedBox(height: 10),
-              ExpiryPickerTile(
-                expiry: l.expiry,
-                onChanged: (d) => _update(() => l.expiry = d),
-              ),
-            ],
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () => Navigator.pop(context),
@@ -752,18 +735,6 @@ class _CustomIngredientDialogState extends State<_CustomIngredientDialog> {
               for (final u in units) DropdownMenuItem(value: u, child: Text(u)),
             ],
             onChanged: (v) => setState(() => _unit = v!),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Icons.schedule_rounded,
-                  size: 16, color: Theme.of(context).textTheme.bodySmall?.color),
-              const SizedBox(width: 6),
-              Text(
-                'Tahmini raf ömrü: ${categoryShelfDays[_category]} gün',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
           ),
         ],
       ),
@@ -828,65 +799,6 @@ class QuantityStepper extends StatelessWidget {
             onPressed: () => onChanged(value + step),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class ExpiryPickerTile extends StatelessWidget {
-  const ExpiryPickerTile(
-      {super.key, required this.expiry, required this.onChanged});
-
-  final DateTime expiry;
-  final ValueChanged<DateTime> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final days = daysLeft(expiry);
-    final f = Freshness.of(days);
-    return Material(
-      color: scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () async {
-          final now = dateOnly(DateTime.now());
-          final picked = await showDatePicker(
-            context: context,
-            initialDate: expiry.isBefore(now) ? now : expiry,
-            firstDate: now.subtract(const Duration(days: 30)),
-            lastDate: now.add(const Duration(days: 365 * 5)),
-            helpText: 'Son kullanma tarihi',
-          );
-          if (picked != null) onChanged(picked);
-        },
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-          child: Row(
-            children: [
-              Icon(Icons.event_rounded, color: scheme.primary, size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Son kullanma',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    Text(shortDate(expiry),
-                        style: Theme.of(context).textTheme.bodySmall),
-                  ],
-                ),
-              ),
-              Pill(expiryLabel(days), color: f.color),
-              const SizedBox(width: 4),
-              Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
-            ],
-          ),
-        ),
       ),
     );
   }

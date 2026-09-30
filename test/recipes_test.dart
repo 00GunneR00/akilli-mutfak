@@ -77,4 +77,5 @@ void main() {
     week = await db.watchMealPlans(today, addDays(today, 7)).first;
     expect(week, isEmpty);
   });
+
 }

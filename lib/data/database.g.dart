@@ -690,6 +690,27 @@ class $PantryItemsTable extends PantryItems
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(StockStatus.ok),
+  );
+  static const VerificationMeta _statusAtMeta = const VerificationMeta(
+    'statusAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> statusAt = GeneratedColumn<DateTime>(
+    'status_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _outcomeMeta = const VerificationMeta(
     'outcome',
   );
@@ -743,6 +764,8 @@ class $PantryItemsTable extends PantryItems
     unit,
     expiryDate,
     addedAt,
+    status,
+    statusAt,
     outcome,
     removedAt,
     updatedAt,
@@ -819,6 +842,18 @@ class $PantryItemsTable extends PantryItems
     } else if (isInserting) {
       context.missing(_addedAtMeta);
     }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('status_at')) {
+      context.handle(
+        _statusAtMeta,
+        statusAt.isAcceptableOrUnknown(data['status_at']!, _statusAtMeta),
+      );
+    }
     if (data.containsKey('outcome')) {
       context.handle(
         _outcomeMeta,
@@ -882,6 +917,14 @@ class $PantryItemsTable extends PantryItems
         DriftSqlType.dateTime,
         data['${effectivePrefix}added_at'],
       )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      statusAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}status_at'],
+      ),
       outcome: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}outcome'],
@@ -913,8 +956,18 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
   final String ingredientId;
   final double quantity;
   final String unit;
+
+  /// Artık gösterilmiyor; eski sürümler ve sunucu şeması için raf ömrüyle
+  /// tahmin edilerek doldurulur.
   final DateTime expiryDate;
   final DateTime addedAt;
+
+  /// [StockStatus.ok] ya da [StockStatus.low] (azaldı).
+  final String status;
+
+  /// Durumun son değiştiği / "hâlâ var" onaylandığı an; bitme tahmini buradan
+  /// başlar.
+  final DateTime? statusAt;
 
   /// null: hâlâ dolapta. Aksi halde [Outcome.consumed] / [Outcome.wasted].
   final String? outcome;
@@ -931,6 +984,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
     required this.unit,
     required this.expiryDate,
     required this.addedAt,
+    required this.status,
+    this.statusAt,
     this.outcome,
     this.removedAt,
     required this.updatedAt,
@@ -946,6 +1001,10 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
     map['unit'] = Variable<String>(unit);
     map['expiry_date'] = Variable<DateTime>(expiryDate);
     map['added_at'] = Variable<DateTime>(addedAt);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || statusAt != null) {
+      map['status_at'] = Variable<DateTime>(statusAt);
+    }
     if (!nullToAbsent || outcome != null) {
       map['outcome'] = Variable<String>(outcome);
     }
@@ -968,6 +1027,10 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
       unit: Value(unit),
       expiryDate: Value(expiryDate),
       addedAt: Value(addedAt),
+      status: Value(status),
+      statusAt: statusAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(statusAt),
       outcome: outcome == null && nullToAbsent
           ? const Value.absent()
           : Value(outcome),
@@ -994,6 +1057,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
       unit: serializer.fromJson<String>(json['unit']),
       expiryDate: serializer.fromJson<DateTime>(json['expiryDate']),
       addedAt: serializer.fromJson<DateTime>(json['addedAt']),
+      status: serializer.fromJson<String>(json['status']),
+      statusAt: serializer.fromJson<DateTime?>(json['statusAt']),
       outcome: serializer.fromJson<String?>(json['outcome']),
       removedAt: serializer.fromJson<DateTime?>(json['removedAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -1011,6 +1076,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
       'unit': serializer.toJson<String>(unit),
       'expiryDate': serializer.toJson<DateTime>(expiryDate),
       'addedAt': serializer.toJson<DateTime>(addedAt),
+      'status': serializer.toJson<String>(status),
+      'statusAt': serializer.toJson<DateTime?>(statusAt),
       'outcome': serializer.toJson<String?>(outcome),
       'removedAt': serializer.toJson<DateTime?>(removedAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -1026,6 +1093,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
     String? unit,
     DateTime? expiryDate,
     DateTime? addedAt,
+    String? status,
+    Value<DateTime?> statusAt = const Value.absent(),
     Value<String?> outcome = const Value.absent(),
     Value<DateTime?> removedAt = const Value.absent(),
     DateTime? updatedAt,
@@ -1038,6 +1107,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
     unit: unit ?? this.unit,
     expiryDate: expiryDate ?? this.expiryDate,
     addedAt: addedAt ?? this.addedAt,
+    status: status ?? this.status,
+    statusAt: statusAt.present ? statusAt.value : this.statusAt,
     outcome: outcome.present ? outcome.value : this.outcome,
     removedAt: removedAt.present ? removedAt.value : this.removedAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1058,6 +1129,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
           ? data.expiryDate.value
           : this.expiryDate,
       addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+      status: data.status.present ? data.status.value : this.status,
+      statusAt: data.statusAt.present ? data.statusAt.value : this.statusAt,
       outcome: data.outcome.present ? data.outcome.value : this.outcome,
       removedAt: data.removedAt.present ? data.removedAt.value : this.removedAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -1075,6 +1148,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
           ..write('unit: $unit, ')
           ..write('expiryDate: $expiryDate, ')
           ..write('addedAt: $addedAt, ')
+          ..write('status: $status, ')
+          ..write('statusAt: $statusAt, ')
           ..write('outcome: $outcome, ')
           ..write('removedAt: $removedAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -1092,6 +1167,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
     unit,
     expiryDate,
     addedAt,
+    status,
+    statusAt,
     outcome,
     removedAt,
     updatedAt,
@@ -1108,6 +1185,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
           other.unit == this.unit &&
           other.expiryDate == this.expiryDate &&
           other.addedAt == this.addedAt &&
+          other.status == this.status &&
+          other.statusAt == this.statusAt &&
           other.outcome == this.outcome &&
           other.removedAt == this.removedAt &&
           other.updatedAt == this.updatedAt &&
@@ -1122,6 +1201,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
   final Value<String> unit;
   final Value<DateTime> expiryDate;
   final Value<DateTime> addedAt;
+  final Value<String> status;
+  final Value<DateTime?> statusAt;
   final Value<String?> outcome;
   final Value<DateTime?> removedAt;
   final Value<DateTime> updatedAt;
@@ -1135,6 +1216,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
     this.unit = const Value.absent(),
     this.expiryDate = const Value.absent(),
     this.addedAt = const Value.absent(),
+    this.status = const Value.absent(),
+    this.statusAt = const Value.absent(),
     this.outcome = const Value.absent(),
     this.removedAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1149,6 +1232,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
     required String unit,
     required DateTime expiryDate,
     required DateTime addedAt,
+    this.status = const Value.absent(),
+    this.statusAt = const Value.absent(),
     this.outcome = const Value.absent(),
     this.removedAt = const Value.absent(),
     required DateTime updatedAt,
@@ -1170,6 +1255,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
     Expression<String>? unit,
     Expression<DateTime>? expiryDate,
     Expression<DateTime>? addedAt,
+    Expression<String>? status,
+    Expression<DateTime>? statusAt,
     Expression<String>? outcome,
     Expression<DateTime>? removedAt,
     Expression<DateTime>? updatedAt,
@@ -1184,6 +1271,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
       if (unit != null) 'unit': unit,
       if (expiryDate != null) 'expiry_date': expiryDate,
       if (addedAt != null) 'added_at': addedAt,
+      if (status != null) 'status': status,
+      if (statusAt != null) 'status_at': statusAt,
       if (outcome != null) 'outcome': outcome,
       if (removedAt != null) 'removed_at': removedAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1200,6 +1289,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
     Value<String>? unit,
     Value<DateTime>? expiryDate,
     Value<DateTime>? addedAt,
+    Value<String>? status,
+    Value<DateTime?>? statusAt,
     Value<String?>? outcome,
     Value<DateTime?>? removedAt,
     Value<DateTime>? updatedAt,
@@ -1214,6 +1305,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
       unit: unit ?? this.unit,
       expiryDate: expiryDate ?? this.expiryDate,
       addedAt: addedAt ?? this.addedAt,
+      status: status ?? this.status,
+      statusAt: statusAt ?? this.statusAt,
       outcome: outcome ?? this.outcome,
       removedAt: removedAt ?? this.removedAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1246,6 +1339,12 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
     if (addedAt.present) {
       map['added_at'] = Variable<DateTime>(addedAt.value);
     }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (statusAt.present) {
+      map['status_at'] = Variable<DateTime>(statusAt.value);
+    }
     if (outcome.present) {
       map['outcome'] = Variable<String>(outcome.value);
     }
@@ -1274,6 +1373,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
           ..write('unit: $unit, ')
           ..write('expiryDate: $expiryDate, ')
           ..write('addedAt: $addedAt, ')
+          ..write('status: $status, ')
+          ..write('statusAt: $statusAt, ')
           ..write('outcome: $outcome, ')
           ..write('removedAt: $removedAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -1594,7 +1695,8 @@ class ShoppingItem extends DataClass implements Insertable<ShoppingItem> {
   /// İşaretlenince oluşturulan dolap kaydı; işaret kaldırılırsa geri alınır.
   final String? pantryItemId;
 
-  /// 'manual' veya ileride yemek planından gelenler için 'plan'.
+  /// 'manual', yemek planından 'plan', dolapta bitenlerden 'finished',
+  /// bitme tahmininden 'restock'.
   final String source;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -2005,6 +2107,27 @@ class $MealPlansTable extends MealPlans
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _mealMeta = const VerificationMeta('meal');
+  @override
+  late final GeneratedColumn<String> meal = GeneratedColumn<String>(
+    'meal',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _servingsMeta = const VerificationMeta(
+    'servings',
+  );
+  @override
+  late final GeneratedColumn<double> servings = GeneratedColumn<double>(
+    'servings',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2044,6 +2167,8 @@ class $MealPlansTable extends MealPlans
     householdId,
     day,
     recipeId,
+    meal,
+    servings,
     createdAt,
     updatedAt,
     deletedAt,
@@ -2092,6 +2217,18 @@ class $MealPlansTable extends MealPlans
     } else if (isInserting) {
       context.missing(_recipeIdMeta);
     }
+    if (data.containsKey('meal')) {
+      context.handle(
+        _mealMeta,
+        meal.isAcceptableOrUnknown(data['meal']!, _mealMeta),
+      );
+    }
+    if (data.containsKey('servings')) {
+      context.handle(
+        _servingsMeta,
+        servings.isAcceptableOrUnknown(data['servings']!, _servingsMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2139,6 +2276,14 @@ class $MealPlansTable extends MealPlans
         DriftSqlType.string,
         data['${effectivePrefix}recipe_id'],
       )!,
+      meal: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meal'],
+      ),
+      servings: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}servings'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2167,6 +2312,12 @@ class MealPlan extends DataClass implements Insertable<MealPlan> {
   /// Yalnızca tarih (yerel gece yarısı).
   final DateTime day;
   final String recipeId;
+
+  /// [Meal] adı (breakfast/lunch/dinner); elle eklenenlerde null.
+  final String? meal;
+
+  /// Porsiyon katsayısı (0,5–1,5); kalori buna göre hesaplanır.
+  final double servings;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -2175,6 +2326,8 @@ class MealPlan extends DataClass implements Insertable<MealPlan> {
     required this.householdId,
     required this.day,
     required this.recipeId,
+    this.meal,
+    required this.servings,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -2186,6 +2339,10 @@ class MealPlan extends DataClass implements Insertable<MealPlan> {
     map['household_id'] = Variable<String>(householdId);
     map['day'] = Variable<DateTime>(day);
     map['recipe_id'] = Variable<String>(recipeId);
+    if (!nullToAbsent || meal != null) {
+      map['meal'] = Variable<String>(meal);
+    }
+    map['servings'] = Variable<double>(servings);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
@@ -2200,6 +2357,8 @@ class MealPlan extends DataClass implements Insertable<MealPlan> {
       householdId: Value(householdId),
       day: Value(day),
       recipeId: Value(recipeId),
+      meal: meal == null && nullToAbsent ? const Value.absent() : Value(meal),
+      servings: Value(servings),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -2218,6 +2377,8 @@ class MealPlan extends DataClass implements Insertable<MealPlan> {
       householdId: serializer.fromJson<String>(json['householdId']),
       day: serializer.fromJson<DateTime>(json['day']),
       recipeId: serializer.fromJson<String>(json['recipeId']),
+      meal: serializer.fromJson<String?>(json['meal']),
+      servings: serializer.fromJson<double>(json['servings']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -2231,6 +2392,8 @@ class MealPlan extends DataClass implements Insertable<MealPlan> {
       'householdId': serializer.toJson<String>(householdId),
       'day': serializer.toJson<DateTime>(day),
       'recipeId': serializer.toJson<String>(recipeId),
+      'meal': serializer.toJson<String?>(meal),
+      'servings': serializer.toJson<double>(servings),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -2242,6 +2405,8 @@ class MealPlan extends DataClass implements Insertable<MealPlan> {
     String? householdId,
     DateTime? day,
     String? recipeId,
+    Value<String?> meal = const Value.absent(),
+    double? servings,
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -2250,6 +2415,8 @@ class MealPlan extends DataClass implements Insertable<MealPlan> {
     householdId: householdId ?? this.householdId,
     day: day ?? this.day,
     recipeId: recipeId ?? this.recipeId,
+    meal: meal.present ? meal.value : this.meal,
+    servings: servings ?? this.servings,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -2262,6 +2429,8 @@ class MealPlan extends DataClass implements Insertable<MealPlan> {
           : this.householdId,
       day: data.day.present ? data.day.value : this.day,
       recipeId: data.recipeId.present ? data.recipeId.value : this.recipeId,
+      meal: data.meal.present ? data.meal.value : this.meal,
+      servings: data.servings.present ? data.servings.value : this.servings,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -2275,6 +2444,8 @@ class MealPlan extends DataClass implements Insertable<MealPlan> {
           ..write('householdId: $householdId, ')
           ..write('day: $day, ')
           ..write('recipeId: $recipeId, ')
+          ..write('meal: $meal, ')
+          ..write('servings: $servings, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -2288,6 +2459,8 @@ class MealPlan extends DataClass implements Insertable<MealPlan> {
     householdId,
     day,
     recipeId,
+    meal,
+    servings,
     createdAt,
     updatedAt,
     deletedAt,
@@ -2300,6 +2473,8 @@ class MealPlan extends DataClass implements Insertable<MealPlan> {
           other.householdId == this.householdId &&
           other.day == this.day &&
           other.recipeId == this.recipeId &&
+          other.meal == this.meal &&
+          other.servings == this.servings &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -2310,6 +2485,8 @@ class MealPlansCompanion extends UpdateCompanion<MealPlan> {
   final Value<String> householdId;
   final Value<DateTime> day;
   final Value<String> recipeId;
+  final Value<String?> meal;
+  final Value<double> servings;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -2319,6 +2496,8 @@ class MealPlansCompanion extends UpdateCompanion<MealPlan> {
     this.householdId = const Value.absent(),
     this.day = const Value.absent(),
     this.recipeId = const Value.absent(),
+    this.meal = const Value.absent(),
+    this.servings = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -2329,6 +2508,8 @@ class MealPlansCompanion extends UpdateCompanion<MealPlan> {
     required String householdId,
     required DateTime day,
     required String recipeId,
+    this.meal = const Value.absent(),
+    this.servings = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
@@ -2344,6 +2525,8 @@ class MealPlansCompanion extends UpdateCompanion<MealPlan> {
     Expression<String>? householdId,
     Expression<DateTime>? day,
     Expression<String>? recipeId,
+    Expression<String>? meal,
+    Expression<double>? servings,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -2354,6 +2537,8 @@ class MealPlansCompanion extends UpdateCompanion<MealPlan> {
       if (householdId != null) 'household_id': householdId,
       if (day != null) 'day': day,
       if (recipeId != null) 'recipe_id': recipeId,
+      if (meal != null) 'meal': meal,
+      if (servings != null) 'servings': servings,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -2366,6 +2551,8 @@ class MealPlansCompanion extends UpdateCompanion<MealPlan> {
     Value<String>? householdId,
     Value<DateTime>? day,
     Value<String>? recipeId,
+    Value<String?>? meal,
+    Value<double>? servings,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -2376,6 +2563,8 @@ class MealPlansCompanion extends UpdateCompanion<MealPlan> {
       householdId: householdId ?? this.householdId,
       day: day ?? this.day,
       recipeId: recipeId ?? this.recipeId,
+      meal: meal ?? this.meal,
+      servings: servings ?? this.servings,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -2397,6 +2586,12 @@ class MealPlansCompanion extends UpdateCompanion<MealPlan> {
     }
     if (recipeId.present) {
       map['recipe_id'] = Variable<String>(recipeId.value);
+    }
+    if (meal.present) {
+      map['meal'] = Variable<String>(meal.value);
+    }
+    if (servings.present) {
+      map['servings'] = Variable<double>(servings.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -2420,6 +2615,8 @@ class MealPlansCompanion extends UpdateCompanion<MealPlan> {
           ..write('householdId: $householdId, ')
           ..write('day: $day, ')
           ..write('recipeId: $recipeId, ')
+          ..write('meal: $meal, ')
+          ..write('servings: $servings, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -3422,6 +3619,8 @@ typedef $$PantryItemsTableCreateCompanionBuilder =
       required String unit,
       required DateTime expiryDate,
       required DateTime addedAt,
+      Value<String> status,
+      Value<DateTime?> statusAt,
       Value<String?> outcome,
       Value<DateTime?> removedAt,
       required DateTime updatedAt,
@@ -3437,6 +3636,8 @@ typedef $$PantryItemsTableUpdateCompanionBuilder =
       Value<String> unit,
       Value<DateTime> expiryDate,
       Value<DateTime> addedAt,
+      Value<String> status,
+      Value<DateTime?> statusAt,
       Value<String?> outcome,
       Value<DateTime?> removedAt,
       Value<DateTime> updatedAt,
@@ -3503,6 +3704,16 @@ class $$PantryItemsTableFilterComposer
 
   ColumnFilters<DateTime> get addedAt => $composableBuilder(
     column: $table.addedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get statusAt => $composableBuilder(
+    column: $table.statusAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3589,6 +3800,16 @@ class $$PantryItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get statusAt => $composableBuilder(
+    column: $table.statusAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get outcome => $composableBuilder(
     column: $table.outcome,
     builder: (column) => ColumnOrderings(column),
@@ -3664,6 +3885,12 @@ class $$PantryItemsTableAnnotationComposer
   GeneratedColumn<DateTime> get addedAt =>
       $composableBuilder(column: $table.addedAt, builder: (column) => column);
 
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get statusAt =>
+      $composableBuilder(column: $table.statusAt, builder: (column) => column);
+
   GeneratedColumn<String> get outcome =>
       $composableBuilder(column: $table.outcome, builder: (column) => column);
 
@@ -3735,6 +3962,8 @@ class $$PantryItemsTableTableManager
                 Value<String> unit = const Value.absent(),
                 Value<DateTime> expiryDate = const Value.absent(),
                 Value<DateTime> addedAt = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime?> statusAt = const Value.absent(),
                 Value<String?> outcome = const Value.absent(),
                 Value<DateTime?> removedAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -3748,6 +3977,8 @@ class $$PantryItemsTableTableManager
                 unit: unit,
                 expiryDate: expiryDate,
                 addedAt: addedAt,
+                status: status,
+                statusAt: statusAt,
                 outcome: outcome,
                 removedAt: removedAt,
                 updatedAt: updatedAt,
@@ -3763,6 +3994,8 @@ class $$PantryItemsTableTableManager
                 required String unit,
                 required DateTime expiryDate,
                 required DateTime addedAt,
+                Value<String> status = const Value.absent(),
+                Value<DateTime?> statusAt = const Value.absent(),
                 Value<String?> outcome = const Value.absent(),
                 Value<DateTime?> removedAt = const Value.absent(),
                 required DateTime updatedAt,
@@ -3776,6 +4009,8 @@ class $$PantryItemsTableTableManager
                 unit: unit,
                 expiryDate: expiryDate,
                 addedAt: addedAt,
+                status: status,
+                statusAt: statusAt,
                 outcome: outcome,
                 removedAt: removedAt,
                 updatedAt: updatedAt,
@@ -4290,6 +4525,8 @@ typedef $$MealPlansTableCreateCompanionBuilder = MealPlansCompanion Function({
   required String householdId,
   required DateTime day,
   required String recipeId,
+  Value<String?> meal,
+  Value<double> servings,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<DateTime?> deletedAt,
@@ -4300,6 +4537,8 @@ typedef $$MealPlansTableUpdateCompanionBuilder = MealPlansCompanion Function({
   Value<String> householdId,
   Value<DateTime> day,
   Value<String> recipeId,
+  Value<String?> meal,
+  Value<double> servings,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
@@ -4332,6 +4571,16 @@ class $$MealPlansTableFilterComposer
 
   ColumnFilters<String> get recipeId => $composableBuilder(
     column: $table.recipeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get meal => $composableBuilder(
+    column: $table.meal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get servings => $composableBuilder(
+    column: $table.servings,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4380,6 +4629,16 @@ class $$MealPlansTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get meal => $composableBuilder(
+    column: $table.meal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get servings => $composableBuilder(
+    column: $table.servings,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4418,6 +4677,12 @@ class $$MealPlansTableAnnotationComposer
 
   GeneratedColumn<String> get recipeId =>
       $composableBuilder(column: $table.recipeId, builder: (column) => column);
+
+  GeneratedColumn<String> get meal =>
+      $composableBuilder(column: $table.meal, builder: (column) => column);
+
+  GeneratedColumn<double> get servings =>
+      $composableBuilder(column: $table.servings, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4461,6 +4726,8 @@ class $$MealPlansTableTableManager
                 Value<String> householdId = const Value.absent(),
                 Value<DateTime> day = const Value.absent(),
                 Value<String> recipeId = const Value.absent(),
+                Value<String?> meal = const Value.absent(),
+                Value<double> servings = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -4470,6 +4737,8 @@ class $$MealPlansTableTableManager
                 householdId: householdId,
                 day: day,
                 recipeId: recipeId,
+                meal: meal,
+                servings: servings,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -4481,6 +4750,8 @@ class $$MealPlansTableTableManager
                 required String householdId,
                 required DateTime day,
                 required String recipeId,
+                Value<String?> meal = const Value.absent(),
+                Value<double> servings = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -4490,6 +4761,8 @@ class $$MealPlansTableTableManager
                 householdId: householdId,
                 day: day,
                 recipeId: recipeId,
+                meal: meal,
+                servings: servings,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,

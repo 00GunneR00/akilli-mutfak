@@ -276,6 +276,8 @@ final seedIngredients = <SeedIngredient>[
   _i('Mısır Gevreği', _kahvalti, '🥣', 'paket', 1, 180),
   _i('Granola', _kahvalti, '🥣', 'paket', 1, 180),
   _i('Müsli', _kahvalti, '🥣', 'paket', 1, 180),
+  _i('Chia Tohumu', _kahvalti, '🌱', 'paket', 1, 365),
+  _i('Protein Tozu', _kahvalti, '💪', 'kutu', 1, 365),
 
   // -------------------------------------------------------------- Şarküteri
   _i('Sucuk', _sarkuteri, '🌭', 'paket', 1, 30, 8),

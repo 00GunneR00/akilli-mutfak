@@ -6,8 +6,20 @@
 //
 // Malzemeler `seed_catalog.dart`'taki ürün adlarıyla birebir aynı olmalıdır
 // (test ile doğrulanır); dolaptaki ürünlerle eşleşme bu adlar üzerinden yapılır.
+//
+// Kaloriler tahmin edilmez: her tarifin porsiyon gramajı `recipe_portions.dart`
+// dosyasında, malzemelerin 100 g değerleri USDA SR Legacy verisinden
+// (`tool/nutrition/`) gelir.
 
 import '../core/text.dart';
+import 'ingredient_nutrition.g.dart';
+import 'nutrition.dart';
+import 'recipe_portions.dart';
+import 'recipe_tags.dart';
+
+export 'nutrition.dart';
+export 'recipe_portions.dart';
+export 'recipe_tags.dart';
 
 typedef Recipe = ({
   String id,
@@ -15,7 +27,19 @@ typedef Recipe = ({
   String category,
   String emoji,
   int minutes,
+
+  /// Bir porsiyonun kalorisi (kcal): malzeme gramajları (`recipe_portions.dart`)
+  /// ve USDA besin değerlerinden hesaplanır.
+  int kcal,
+
+  /// Bir porsiyonun çiğ malzeme ağırlığı (g).
+  int grams,
+  Nutrients nutrients,
   List<String> ingredients,
+
+  /// Plan önerisinin kullandığı etiketler (`recipe_tags.dart`); etiketsiz
+  /// tarif plana alınmaz.
+  RecipeTags? tags,
 });
 
 /// Kategori → emoji; sıra ekrandaki filtre çiplerinin sırasıdır.
@@ -31,6 +55,7 @@ const recipeCategories = <String, String>{
   'Kahvaltılık': '🍳',
   'Salata & Meze': '🥗',
   'Tatlılar': '🍮',
+  'Ara Öğün': '🥤',
 };
 
 /// Çoğu evde bulunan, dolapta takip edilmesi beklenmeyen temel malzemeler;
@@ -46,15 +71,32 @@ String recipeUrl(Recipe r) =>
     'https://www.nefisyemektarifleri.com/ara/?s=${Uri.encodeQueryComponent(r.name)}';
 
 Recipe _r(String name, String category, String emoji, int minutes,
-        List<String> ingredients) =>
-    (
-      id: 'rcp_${slugId(name).substring(4)}',
-      name: name,
-      category: category,
-      emoji: emoji,
-      minutes: minutes,
-      ingredients: ingredients,
-    );
+    List<String> ingredients) {
+  final portion = recipePortions[name] ?? const {};
+  final nutrients = portionNutrients(portion);
+  return (
+    id: 'rcp_${slugId(name).substring(4)}',
+    name: name,
+    category: category,
+    emoji: emoji,
+    minutes: minutes,
+    kcal: nutrients.kcal.round(),
+    grams: portion.values.fold<num>(0, (s, g) => s + g).round(),
+    nutrients: nutrients,
+    ingredients: ingredients,
+    tags: recipeTags[name],
+  );
+}
+
+/// Bir porsiyonun besin değeri: gramajlar × USDA 100 g değerleri.
+Nutrients portionNutrients(Map<String, num> grams) {
+  var total = Nutrients.zero;
+  for (final MapEntry(key: name, value: g) in grams.entries) {
+    final per100 = ingredientNutrition[name];
+    if (per100 != null) total = total + per100 * (g / 100);
+  }
+  return total;
+}
 
 const _corba = 'Çorbalar';
 const _et = 'Et Yemekleri';
@@ -67,6 +109,7 @@ const _hamur = 'Hamur İşi';
 const _kahvalti = 'Kahvaltılık';
 const _salata = 'Salata & Meze';
 const _tatli = 'Tatlılar';
+const _ara = 'Ara Öğün';
 
 final recipes = <Recipe>[
   // ---------------------------------------------------------------- Çorbalar
@@ -77,30 +120,30 @@ final recipes = <Recipe>[
   _r('Tavuk Suyu Çorbası', _corba, '🍲', 60, ['Tavuk But', 'Tel Şehriye', 'Havuç', 'Limon', 'Yumurta', 'Un', 'Tuz', 'Karabiber']),
   _r('Mantar Çorbası', _corba, '🍄', 30, ['Mantar', 'Soğan', 'Tereyağı', 'Un', 'Süt', 'Krema', 'Tuz', 'Karabiber']),
   _r('Tarhana Çorbası', _corba, '🥣', 20, ['Tarhana', 'Domates Salçası', 'Tereyağı', 'Sarımsak', 'Kuru Nane', 'Tuz']),
-  _r('Yeşil Mercimek Çorbası', _corba, '🍲', 50, ['Yeşil Mercimek', 'Soğan', 'Havuç', 'Bulgur', 'Domates Salçası', 'Kuru Nane', 'Tuz']),
+  _r('Yeşil Mercimek Çorbası', _corba, '🍲', 50, ['Yeşil Mercimek', 'Soğan', 'Havuç', 'Bulgur', 'Domates Salçası', 'Kuru Nane', 'Tuz', 'Zeytinyağı']),
   _r('Şehriye Çorbası', _corba, '🍲', 25, ['Şehriye', 'Domates', 'Domates Salçası', 'Tereyağı', 'Limon', 'Maydanoz', 'Tuz']),
   _r('Brokoli Çorbası', _corba, '🥦', 30, ['Brokoli', 'Patates', 'Soğan', 'Süt', 'Tereyağı', 'Un', 'Tuz']),
   _r('Balkabağı Çorbası', _corba, '🎃', 40, ['Balkabağı', 'Soğan', 'Havuç', 'Krema', 'Tereyağı', 'Taze Zencefil', 'Tuz']),
   _r('Düğün Çorbası', _corba, '🍲', 90, ['Kuşbaşı Et', 'Yoğurt', 'Yumurta', 'Un', 'Limon', 'Tereyağı', 'Pul Biber', 'Tuz']),
-  _r('Sebze Çorbası', _corba, '🥕', 35, ['Patates', 'Havuç', 'Kabak', 'Bezelye', 'Soğan', 'Domates Salçası', 'Tuz']),
+  _r('Sebze Çorbası', _corba, '🥕', 35, ['Patates', 'Havuç', 'Kabak', 'Bezelye', 'Soğan', 'Domates Salçası', 'Tuz', 'Zeytinyağı']),
 
   // ------------------------------------------------------------ Et Yemekleri
   _r('Karnıyarık', _et, '🍆', 70, ['Patlıcan', 'Kıyma', 'Soğan', 'Domates', 'Sivri Biber', 'Sarımsak', 'Domates Salçası', 'Maydanoz', 'Ayçiçek Yağı', 'Tuz', 'Karabiber']),
-  _r('İzmir Köfte', _et, '🧆', 60, ['Kıyma', 'Patates', 'Domates', 'Sivri Biber', 'Soğan', 'Galeta Unu', 'Yumurta', 'Domates Salçası', 'Kimyon', 'Tuz']),
+  _r('İzmir Köfte', _et, '🧆', 60, ['Kıyma', 'Patates', 'Domates', 'Sivri Biber', 'Soğan', 'Galeta Unu', 'Yumurta', 'Domates Salçası', 'Kimyon', 'Tuz', 'Ayçiçek Yağı']),
   _r('Izgara Köfte', _et, '🧆', 30, ['Kıyma', 'Soğan', 'Galeta Unu', 'Yumurta', 'Maydanoz', 'Kimyon', 'Tuz', 'Karabiber']),
   _r('Tas Kebabı', _et, '🥘', 90, ['Kuşbaşı Et', 'Soğan', 'Domates', 'Sivri Biber', 'Domates Salçası', 'Tereyağı', 'Tuz', 'Karabiber']),
-  _r('Etli Patates Yemeği', _et, '🥔', 60, ['Kuşbaşı Et', 'Patates', 'Soğan', 'Domates Salçası', 'Tuz']),
+  _r('Etli Patates Yemeği', _et, '🥔', 60, ['Kuşbaşı Et', 'Patates', 'Soğan', 'Domates Salçası', 'Tuz', 'Ayçiçek Yağı']),
   _r('Hünkar Beğendi', _et, '🥘', 90, ['Kuşbaşı Et', 'Patlıcan', 'Süt', 'Un', 'Tereyağı', 'Kaşar Peyniri', 'Soğan', 'Domates', 'Domates Salçası', 'Tuz']),
   _r('Patlıcan Musakka', _et, '🍆', 70, ['Patlıcan', 'Kıyma', 'Soğan', 'Domates', 'Sivri Biber', 'Domates Salçası', 'Ayçiçek Yağı', 'Tuz']),
-  _r('Sulu Köfte', _et, '🍲', 50, ['Kıyma', 'Pirinç', 'Soğan', 'Patates', 'Havuç', 'Domates Salçası', 'Un', 'Limon', 'Tuz']),
+  _r('Sulu Köfte', _et, '🍲', 50, ['Kıyma', 'Pirinç', 'Soğan', 'Patates', 'Havuç', 'Domates Salçası', 'Un', 'Limon', 'Tuz', 'Tereyağı']),
   _r('Et Sote', _et, '🥩', 40, ['Kuşbaşı Et', 'Soğan', 'Sivri Biber', 'Domates', 'Tereyağı', 'Kekik', 'Tuz']),
-  _r('Orman Kebabı', _et, '🥘', 90, ['Kuşbaşı Et', 'Patates', 'Bezelye', 'Havuç', 'Soğan', 'Domates Salçası', 'Tuz']),
+  _r('Orman Kebabı', _et, '🥘', 90, ['Kuşbaşı Et', 'Patates', 'Bezelye', 'Havuç', 'Soğan', 'Domates Salçası', 'Tuz', 'Tereyağı']),
   _r('İskender Kebap', _et, '🥙', 40, ['Dana Döner', 'Pide', 'Yoğurt', 'Tereyağı', 'Domates Salçası', 'Domates', 'Tuz']),
   _r('Hamburger', _et, '🍔', 30, ['Hamburger Köftesi', 'Hamburger Ekmeği', 'Marul', 'Domates', 'Kornişon Turşu', 'Cheddar', 'Ketçap', 'Mayonez', 'Kırmızı Soğan']),
   _r('Fırında Kuzu İncik', _et, '🍖', 180, ['Kuzu İncik', 'Soğan', 'Havuç', 'Sarımsak', 'Domates Salçası', 'Biberiye', 'Tuz']),
   _r('Ciğer Tava', _et, '🍳', 20, ['Ciğer', 'Un', 'Kırmızı Soğan', 'Maydanoz', 'Sumak', 'Ayçiçek Yağı', 'Tuz']),
   _r('Kadınbudu Köfte', _et, '🧆', 60, ['Kıyma', 'Pirinç', 'Soğan', 'Yumurta', 'Un', 'Ayçiçek Yağı', 'Kimyon', 'Tuz']),
-  _r('Etli Bamya', _et, '🥘', 60, ['Bamya', 'Kuşbaşı Et', 'Soğan', 'Domates', 'Domates Salçası', 'Limon', 'Tuz']),
+  _r('Etli Bamya', _et, '🥘', 60, ['Bamya', 'Kuşbaşı Et', 'Soğan', 'Domates', 'Domates Salçası', 'Limon', 'Tuz', 'Tereyağı']),
 
   // --------------------------------------------------------- Tavuk Yemekleri
   _r('Tavuk Sote', _tavuk, '🍗', 35, ['Tavuk Göğsü', 'Soğan', 'Kapya Biber', 'Sivri Biber', 'Domates', 'Mantar', 'Tereyağı', 'Tuz', 'Karabiber']),
@@ -126,27 +169,27 @@ final recipes = <Recipe>[
 
   // --------------------------------------------------------- Sebze Yemekleri
   _r('Zeytinyağlı Taze Fasulye', _sebze, '🫛', 60, ['Taze Fasulye', 'Domates', 'Soğan', 'Zeytinyağı', 'Toz Şeker', 'Tuz']),
-  _r('Kıymalı Ispanak', _sebze, '🥬', 40, ['Ispanak', 'Kıyma', 'Soğan', 'Pirinç', 'Domates Salçası', 'Yoğurt', 'Tuz']),
+  _r('Kıymalı Ispanak', _sebze, '🥬', 40, ['Ispanak', 'Kıyma', 'Soğan', 'Pirinç', 'Domates Salçası', 'Yoğurt', 'Tuz', 'Zeytinyağı']),
   _r('İmam Bayıldı', _sebze, '🍆', 70, ['Patlıcan', 'Soğan', 'Domates', 'Sarımsak', 'Sivri Biber', 'Maydanoz', 'Zeytinyağı', 'Toz Şeker', 'Tuz']),
-  _r('Türlü', _sebze, '🥘', 70, ['Patlıcan', 'Kabak', 'Patates', 'Taze Fasulye', 'Domates', 'Sivri Biber', 'Soğan', 'Domates Salçası', 'Tuz']),
+  _r('Türlü', _sebze, '🥘', 70, ['Patlıcan', 'Kabak', 'Patates', 'Taze Fasulye', 'Domates', 'Sivri Biber', 'Soğan', 'Domates Salçası', 'Tuz', 'Zeytinyağı']),
   _r('Mücver', _sebze, '🥒', 35, ['Kabak', 'Yumurta', 'Un', 'Beyaz Peynir', 'Taze Soğan', 'Dereotu', 'Ayçiçek Yağı', 'Tuz']),
   _r('Zeytinyağlı Pırasa', _sebze, '🥬', 45, ['Pırasa', 'Havuç', 'Pirinç', 'Limon', 'Zeytinyağı', 'Toz Şeker', 'Tuz']),
   _r('Zeytinyağlı Enginar', _sebze, '🥬', 50, ['Enginar', 'Havuç', 'Bezelye', 'Patates', 'Limon', 'Dereotu', 'Zeytinyağı', 'Tuz']),
-  _r('Bezelye Yemeği', _sebze, '🫛', 45, ['Bezelye', 'Havuç', 'Patates', 'Soğan', 'Domates Salçası', 'Tuz']),
+  _r('Bezelye Yemeği', _sebze, '🫛', 45, ['Bezelye', 'Havuç', 'Patates', 'Soğan', 'Domates Salçası', 'Tuz', 'Zeytinyağı']),
   _r('Karnabahar Graten', _sebze, '🥦', 45, ['Karnabahar', 'Süt', 'Un', 'Tereyağı', 'Kaşar Peyniri', 'Tuz']),
   _r('Fırında Baharatlı Patates', _sebze, '🥔', 45, ['Patates', 'Sarımsak', 'Zeytinyağı', 'Kekik', 'Tatlı Toz Biber', 'Tuz']),
-  _r('Kıymalı Kabak', _sebze, '🥒', 40, ['Kabak', 'Kıyma', 'Soğan', 'Domates', 'Pirinç', 'Dereotu', 'Tuz']),
+  _r('Kıymalı Kabak', _sebze, '🥒', 40, ['Kabak', 'Kıyma', 'Soğan', 'Domates', 'Pirinç', 'Dereotu', 'Tuz', 'Zeytinyağı']),
   _r('Mantar Sote', _sebze, '🍄', 20, ['Mantar', 'Tereyağı', 'Sarımsak', 'Kapya Biber', 'Kekik', 'Tuz']),
-  _r('Etli Lahana Sarması', _sebze, '🥬', 90, ['Lahana', 'Kıyma', 'Pirinç', 'Soğan', 'Domates Salçası', 'Kuru Nane', 'Tuz']),
-  _r('Biber Dolması', _sebze, '🫑', 70, ['Dolmalık Biber', 'Kıyma', 'Pirinç', 'Soğan', 'Domates', 'Domates Salçası', 'Maydanoz', 'Tuz']),
+  _r('Etli Lahana Sarması', _sebze, '🥬', 90, ['Lahana', 'Kıyma', 'Pirinç', 'Soğan', 'Domates Salçası', 'Kuru Nane', 'Tuz', 'Zeytinyağı']),
+  _r('Biber Dolması', _sebze, '🫑', 70, ['Dolmalık Biber', 'Kıyma', 'Pirinç', 'Soğan', 'Domates', 'Domates Salçası', 'Maydanoz', 'Tuz', 'Zeytinyağı']),
   _r('Zeytinyağlı Yaprak Sarma', _sebze, '🍃', 120, ['Asma Yaprağı', 'Pirinç', 'Soğan', 'Kuru Üzüm', 'Limon', 'Maydanoz', 'Dereotu', 'Zeytinyağı', 'Kuru Nane', 'Tarçın', 'Tuz']),
-  _r('Patates Oturtma', _sebze, '🥔', 50, ['Patates', 'Kıyma', 'Soğan', 'Domates', 'Sivri Biber', 'Domates Salçası', 'Tuz']),
+  _r('Patates Oturtma', _sebze, '🥔', 50, ['Patates', 'Kıyma', 'Soğan', 'Domates', 'Sivri Biber', 'Domates Salçası', 'Tuz', 'Ayçiçek Yağı']),
 
   // ---------------------------------------------------------------- Bakliyat
   _r('Kuru Fasulye', _bakliyat, '🫘', 120, ['Kuru Fasulye', 'Soğan', 'Domates Salçası', 'Biber Salçası', 'Tereyağı', 'Pul Biber', 'Tuz']),
   _r('Etli Nohut', _bakliyat, '🫘', 100, ['Nohut', 'Kuşbaşı Et', 'Soğan', 'Domates Salçası', 'Tereyağı', 'Tuz']),
   _r('Zeytinyağlı Barbunya', _bakliyat, '🫘', 60, ['Barbunya', 'Havuç', 'Patates', 'Soğan', 'Domates', 'Zeytinyağı', 'Tuz']),
-  _r('Yeşil Mercimek Yemeği', _bakliyat, '🫘', 50, ['Yeşil Mercimek', 'Soğan', 'Bulgur', 'Domates Salçası', 'Kuru Nane', 'Tuz']),
+  _r('Yeşil Mercimek Yemeği', _bakliyat, '🫘', 50, ['Yeşil Mercimek', 'Soğan', 'Bulgur', 'Domates Salçası', 'Kuru Nane', 'Tuz', 'Zeytinyağı']),
   _r('Pastırmalı Kuru Fasulye', _bakliyat, '🫘', 120, ['Kuru Fasulye', 'Pastırma', 'Soğan', 'Domates Salçası', 'Tereyağı', 'Tuz']),
   _r('Sucuklu Nohut', _bakliyat, '🫘', 30, ['Nohut Konservesi', 'Sucuk', 'Soğan', 'Domates Salçası', 'Tuz']),
 
@@ -157,7 +200,7 @@ final recipes = <Recipe>[
   _r('İç Pilav', _pilav, '🍚', 45, ['Pirinç', 'Soğan', 'Kuru Üzüm', 'Antep Fıstığı', 'Tereyağı', 'Tarçın', 'Yenibahar', 'Tuz']),
   _r('Nohutlu Pilav', _pilav, '🍚', 30, ['Pirinç', 'Nohut', 'Tereyağı', 'Tuz']),
   _r('Şehriye Pilavı', _pilav, '🍚', 25, ['Şehriye', 'Tereyağı', 'Domates Salçası', 'Tuz']),
-  _r('Kıymalı Makarna', _pilav, '🍝', 30, ['Makarna', 'Kıyma', 'Soğan', 'Domates', 'Domates Salçası', 'Tuz']),
+  _r('Kıymalı Makarna', _pilav, '🍝', 30, ['Makarna', 'Kıyma', 'Soğan', 'Domates', 'Domates Salçası', 'Tuz', 'Zeytinyağı']),
   _r('Fırın Makarna', _pilav, '🍝', 50, ['Makarna', 'Süt', 'Un', 'Tereyağı', 'Yumurta', 'Kaşar Peyniri', 'Tuz']),
   _r('Spagetti Bolonez', _pilav, '🍝', 45, ['Spagetti', 'Kıyma', 'Soğan', 'Havuç', 'Domates', 'Sarımsak', 'Domates Salçası', 'Zeytinyağı', 'Parmesan', 'Tuz']),
   _r('Kremalı Mantarlı Makarna', _pilav, '🍝', 25, ['Penne', 'Mantar', 'Krema', 'Sarımsak', 'Tereyağı', 'Parmesan', 'Tuz']),
@@ -190,6 +233,11 @@ final recipes = <Recipe>[
   _r('Yulaf Lapası', _kahvalti, '🥣', 10, ['Yulaf', 'Süt', 'Muz', 'Bal', 'Tarçın']),
   _r('Yumurtalı Ekmek', _kahvalti, '🍞', 15, ['Ekmek', 'Yumurta', 'Süt', 'Ayçiçek Yağı', 'Tuz']),
   _r('Avokadolu Tost', _kahvalti, '🥑', 10, ['Ekşi Mayalı Ekmek', 'Avokado', 'Yumurta', 'Limon', 'Pul Biber', 'Tuz']),
+
+  // Türk kahvaltısının temeli: peynir, zeytin, domates, salatalık, 2 dilim ekmek.
+  _r('Kahvaltı Tabağı', _kahvalti, '🧀', 5, ['Beyaz Peynir', 'Zeytin', 'Domates', 'Salatalık', 'Ekmek']),
+  _r('Haşlanmış Yumurta', _kahvalti, '🥚', 10, ['Yumurta', 'Tuz']),
+  _r('Susamlı Simit', _kahvalti, '🥯', 1, ['Simit']),
 
   // ----------------------------------------------------------- Salata & Meze
   _r('Çoban Salatası', _salata, '🥗', 10, ['Domates', 'Salatalık', 'Sivri Biber', 'Kırmızı Soğan', 'Maydanoz', 'Limon', 'Zeytinyağı', 'Tuz']),
@@ -226,6 +274,35 @@ final recipes = <Recipe>[
   _r('Un Kurabiyesi', _tatli, '🍪', 40, ['Un', 'Tereyağı', 'Pudra Şekeri', 'Nişasta', 'Vanilin']),
   _r('Aşure', _tatli, '🥣', 180, ['Aşurelik Buğday', 'Nohut', 'Kuru Fasulye', 'Kuru Kayısı', 'Kuru İncir', 'Kuru Üzüm', 'Ceviz', 'Nar', 'Toz Şeker']),
   _r('Çilekli Magnolia', _tatli, '🍓', 30, ['Süt', 'Un', 'Nişasta', 'Yumurta', 'Krema', 'Bisküvi', 'Çilek', 'Toz Şeker', 'Vanilin']),
+
+  // --------------------------------------------------------------- Ara Öğün
+  // Porsiyonlar: 1 su bardağı (250 ml) süt/yoğurt/kefir, 1 orta boy meyve,
+  // bir avuç (≈30 g) kuruyemiş; tatlandırıcı en fazla 1 tatlı kaşığı bal.
+  _r('Muzlu Süt Shake', _ara, '🥤', 5, ['Süt', 'Muz', 'Tarçın']),
+  _r('Yulaflı Muz Shake', _ara, '🥤', 5, ['Süt', 'Muz', 'Yulaf', 'Fıstık Ezmesi', 'Bal']),
+  _r('Fıstık Ezmeli Protein Shake', _ara, '💪', 5, ['Süt', 'Protein Tozu', 'Muz', 'Fıstık Ezmesi']),
+  _r('Kakaolu Muz Protein Shake', _ara, '💪', 5, ['Süt', 'Protein Tozu', 'Kakao', 'Muz']),
+  _r('Hurmalı Kilo Aldıran Shake', _ara, '🥤', 5, ['Süt', 'Hurma', 'Yulaf', 'Badem', 'Muz']),
+  _r('Çilekli Yoğurt Smoothie', _ara, '🍓', 5, ['Yoğurt', 'Çilek', 'Bal']),
+  _r('Orman Meyveli Kefir Smoothie', _ara, '🫐', 5, ['Kefir', 'Yaban Mersini', 'Ahududu']),
+  _r('Yeşil Smoothie', _ara, '🥬', 5, ['Ispanak', 'Yeşil Elma', 'Muz', 'Salatalık', 'Limon']),
+  _r('Mangolu Yoğurt Smoothie', _ara, '🥭', 5, ['Mango', 'Yoğurt', 'Portakal']),
+  _r('Yoğurtlu Meyve Kasesi', _ara, '🥣', 5, ['Yoğurt', 'Çilek', 'Muz', 'Ceviz']),
+  _r('Granolalı Yoğurt', _ara, '🥣', 5, ['Süzme Yoğurt', 'Granola', 'Bal']),
+  _r('Chialı Puding', _ara, '🌱', 10, ['Süt', 'Chia Tohumu', 'Bal', 'Çilek']),
+  _r('Elma ve Badem', _ara, '🍎', 2, ['Elma', 'Badem']),
+  _r('Muz ve Fıstık Ezmesi', _ara, '🍌', 2, ['Muz', 'Fıstık Ezmesi']),
+  _r('Karpuz ve Beyaz Peynir', _ara, '🍉', 5, ['Karpuz', 'Beyaz Peynir']),
+  _r('Lorlu Armut', _ara, '🍐', 5, ['Armut', 'Lor Peyniri', 'Ceviz', 'Tarçın']),
+  _r('Mevsim Meyve Tabağı', _ara, '🍊', 5, ['Portakal', 'Elma', 'Kivi']),
+  _r('Kuru Meyve ve Ceviz', _ara, '🍑', 2, ['Kuru Kayısı', 'Kuru İncir', 'Ceviz']),
+  _r('Bir Avuç Kuruyemiş', _ara, '🥜', 1, ['Badem', 'Fındık', 'Ceviz']),
+  _r('Leblebi ve Kuru Üzüm', _ara, '🫘', 1, ['Leblebi', 'Kuru Üzüm']),
+  _r('Humuslu Sebze Çubukları', _ara, '🥕', 5, ['Havuç', 'Salatalık', 'Kapya Biber', 'Humus']),
+  _r('Yoğurt Soslu Sebze Çubukları', _ara, '🥕', 5, ['Havuç', 'Salatalık', 'Kereviz', 'Süzme Yoğurt', 'Dereotu']),
+  _r('Haşlanmış Yumurta ve Salatalık', _ara, '🥚', 10, ['Yumurta', 'Salatalık', 'Domates']),
+  _r('Peynirli Tam Buğday Dilimi', _ara, '🥪', 5, ['Tam Buğday Ekmeği', 'Beyaz Peynir', 'Domates', 'Salatalık']),
+  _r('Simit ve Ayran', _ara, '🥯', 1, ['Simit', 'Ayran']),
 ];
 
 final recipesById = {for (final r in recipes) r.id: r};

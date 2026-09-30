@@ -214,7 +214,7 @@ class _Headline extends StatelessWidget {
       (final w, final b) when b > 0 && w > b => (
           '📈',
           'Bu ay $w ürün israf ettin',
-          'Geçen ay $b idi. Acil tüket listesine göz at.',
+          'Geçen ay $b idi. Daha küçük miktarlar almayı dene.',
         ),
       (final w, _) => ('♻️', 'Bu ay $w ürün israf ettin', 'Geçen ayla aynı seviyede.'),
     };

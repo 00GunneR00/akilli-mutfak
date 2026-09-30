@@ -9,6 +9,8 @@ import '../../core/ui.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/recipe_catalog.dart';
+import 'meal_planner.dart';
+import 'plan_suggest_screen.dart';
 import 'recipe_match.dart';
 import 'recipe_sheets.dart';
 
@@ -242,7 +244,7 @@ class _RecipeCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleSmall),
                       const SizedBox(height: 2),
-                      Text('${r.category} · ${r.minutes} dk',
+                      Text('${r.category} · ${r.minutes} dk · ${r.kcal} kcal',
                           style: Theme.of(context).textTheme.bodySmall),
                       const SizedBox(height: 8),
                       ClipRRect(
@@ -330,14 +332,32 @@ class _WeekPlan extends ConsumerWidget {
                   const Icon(Icons.calendar_month_rounded, size: 40),
                 ],
               ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                  ),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) =>
+                            PlanSuggestScreen(hasExistingPlan: plans.isNotEmpty)),
+                  ),
+                  icon: const Icon(Icons.auto_awesome_rounded),
+                  label: const Text('Plan öner (kalori ve tercihlere göre)'),
+                ),
+              ),
               if (missing.isNotEmpty) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Theme.of(context).colorScheme.primary,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white70),
                     ),
                     onPressed: () => addMissing(context, ref, missing.values),
                     icon: const Icon(Icons.add_shopping_cart_rounded),
@@ -378,6 +398,12 @@ class _DayCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final isToday = daysLeft(day) == 0;
+    // Öneriyle eklenenler öğün sırasına, elle eklenenler sona.
+    final sorted = plans.sortedBy<num>(
+        (p) => Meal.byName(p.meal)?.index ?? Meal.values.length);
+    int kcalOf(MealPlan p) =>
+        ((matches[p.recipeId]?.recipe.kcal ?? 0) * p.servings).round();
+    final kcal = sorted.fold(0, (s, p) => s + kcalOf(p));
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Card(
@@ -399,6 +425,10 @@ class _DayCard extends ConsumerWidget {
                   Text(DateFormat('d MMMM', 'tr').format(day),
                       style: Theme.of(context).textTheme.bodySmall),
                   const Spacer(),
+                  if (kcal > 0)
+                    Text('≈ ${formatKcal(kcal)}',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: scheme.primary, fontWeight: FontWeight.w700)),
                   TextButton.icon(
                     onPressed: onAdd,
                     icon: const Icon(Icons.add_rounded, size: 18),
@@ -412,16 +442,24 @@ class _DayCard extends ConsumerWidget {
                   child: Text('Henüz yemek yok',
                       style: Theme.of(context).textTheme.bodySmall),
                 ),
-              for (final p in plans)
+              for (final p in sorted)
                 if (matches[p.recipeId] case final m?)
                   ListTile(
                     contentPadding: const EdgeInsets.only(right: 0),
                     leading: EmojiBadge(m.recipe.emoji, size: 42),
                     title: Text(m.recipe.name,
                         style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(m.ready
-                        ? 'Malzemeler tamam'
-                        : 'Eksik: ${m.missing.map((i) => i.name).join(', ')}',
+                    subtitle: Text(
+                        [
+                          if (Meal.byName(p.meal) case final meal?) meal.label,
+                          if (servingsLabel(p.servings) case final s
+                              when s.isNotEmpty)
+                            s,
+                          '${kcalOf(p)} kcal',
+                          m.ready
+                              ? 'Malzemeler tamam'
+                              : 'Eksik: ${m.missing.map((i) => i.name).join(', ')}',
+                        ].join(' · '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                     onTap: () => showRecipeDetail(context, m.recipe.id),

@@ -66,6 +66,7 @@ class _RecipeDetailSheet extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     final warn = Freshness.critical.color;
 
+    final grams = recipePortions[r.name] ?? const <String, num>{};
     Widget row(Ingredient i, {required IconData icon, required Color color, String? tag}) =>
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 5),
@@ -78,6 +79,11 @@ class _RecipeDetailSheet extends ConsumerWidget {
               Expanded(
                   child: Text(i.name,
                       style: const TextStyle(fontWeight: FontWeight.w600))),
+              if (grams[i.name] case final g?)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text('${formatQty(g.toDouble())} g', style: text.bodySmall),
+                ),
               if (tag != null) Pill(tag, color: color),
             ],
           ),
@@ -105,6 +111,9 @@ class _RecipeDetailSheet extends ConsumerWidget {
                     Wrap(spacing: 6, runSpacing: 6, children: [
                       Pill('${r.minutes} dk',
                           color: scheme.primary, icon: Icons.schedule_rounded),
+                      Pill('${r.kcal} kcal / porsiyon',
+                          color: scheme.primary,
+                          icon: Icons.local_fire_department_rounded),
                       Pill(r.category, color: scheme.primary),
                     ]),
                   ],
@@ -135,7 +144,10 @@ class _RecipeDetailSheet extends ConsumerWidget {
               ],
             ),
           ),
-          const SectionTitle('Malzemeler', padding: EdgeInsets.fromLTRB(0, 20, 0, 6)),
+          const SizedBox(height: 12),
+          _NutritionCard(recipe: r),
+          const SectionTitle('Malzemeler (1 porsiyon)',
+              padding: EdgeInsets.fromLTRB(0, 20, 0, 6)),
           for (final i in match.have)
             row(i, icon: Icons.check_circle_rounded, color: scheme.primary),
           for (final i in match.missing)
@@ -174,6 +186,55 @@ class _RecipeDetailSheet extends ConsumerWidget {
             onPressed: () => openRecipeOnWeb(context, r),
             icon: const Icon(Icons.open_in_new_rounded),
             label: const Text('Tarifi aç · nefisyemektarifleri.com'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bir porsiyonun enerji ve makroları; kaynağı açıkça yazılır.
+class _NutritionCard extends StatelessWidget {
+  const _NutritionCard({required this.recipe});
+
+  final Recipe recipe;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final n = recipe.nutrients;
+    Widget cell(String value, String label) => Expanded(
+          child: Column(
+            children: [
+              Text(value,
+                  style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+              Text(label, style: text.bodySmall),
+            ],
+          ),
+        );
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
+      decoration: BoxDecoration(
+        border: Border.all(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              cell('${recipe.kcal}', 'kcal'),
+              cell('${n.protein.round()} g', 'protein'),
+              cell('${n.carb.round()} g', 'karbonhidrat'),
+              cell('${n.fat.round()} g', 'yağ'),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '1 porsiyon · Aşağıdaki gramajlar ve USDA besin veritabanı '
+            '(SR Legacy) değerleriyle hesaplandı.',
+            textAlign: TextAlign.center,
+            style: text.bodySmall,
           ),
         ],
       ),
@@ -265,7 +326,8 @@ class _RecipePickerState extends ConsumerState<_RecipePicker> {
                   leading: EmojiBadge(m.recipe.emoji, size: 42),
                   title: Text(m.recipe.name,
                       style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text('${m.recipe.category} · ${m.recipe.minutes} dk'),
+                  subtitle: Text(
+                      '${m.recipe.category} · ${m.recipe.minutes} dk · ${m.recipe.kcal} kcal'),
                   trailing: MissingPill(m),
                   onTap: () => Navigator.pop(context, m.recipe),
                 );

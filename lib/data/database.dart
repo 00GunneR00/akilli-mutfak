@@ -36,8 +36,17 @@ class PantryItems extends Table {
   TextColumn get ingredientId => text().references(Ingredients, #id)();
   RealColumn get quantity => real()();
   TextColumn get unit => text()();
+  /// Artık gösterilmiyor; eski sürümler ve sunucu şeması için raf ömrüyle
+  /// tahmin edilerek doldurulur.
   DateTimeColumn get expiryDate => dateTime()();
   DateTimeColumn get addedAt => dateTime()();
+
+  /// [StockStatus.ok] ya da [StockStatus.low] (azaldı).
+  TextColumn get status => text().withDefault(const Constant(StockStatus.ok))();
+
+  /// Durumun son değiştiği / "hâlâ var" onaylandığı an; bitme tahmini buradan
+  /// başlar.
+  DateTimeColumn get statusAt => dateTime().nullable()();
 
   /// null: hâlâ dolapta. Aksi halde [Outcome.consumed] / [Outcome.wasted].
   TextColumn get outcome => text().nullable()();
@@ -62,7 +71,8 @@ class ShoppingItems extends Table {
   /// İşaretlenince oluşturulan dolap kaydı; işaret kaldırılırsa geri alınır.
   TextColumn get pantryItemId => text().nullable()();
 
-  /// 'manual' veya ileride yemek planından gelenler için 'plan'.
+  /// 'manual', yemek planından 'plan', dolapta bitenlerden 'finished',
+  /// bitme tahmininden 'restock'.
   TextColumn get source => text().withDefault(const Constant('manual'))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -80,6 +90,12 @@ class MealPlans extends Table {
   /// Yalnızca tarih (yerel gece yarısı).
   DateTimeColumn get day => dateTime()();
   TextColumn get recipeId => text()();
+
+  /// [Meal] adı (breakfast/lunch/dinner); elle eklenenlerde null.
+  TextColumn get meal => text().nullable()();
+
+  /// Porsiyon katsayısı (0,5–1,5); kalori buna göre hesaplanır.
+  RealColumn get servings => real().withDefault(const Constant(1))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -108,6 +124,11 @@ class KeyValues extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+abstract final class StockStatus {
+  static const ok = 'ok';
+  static const low = 'low';
+}
+
 abstract final class Outcome {
   static const consumed = 'consumed';
   static const wasted = 'wasted';
@@ -127,10 +148,9 @@ class ShoppingEntry {
 
 /// Hızlı ekleme sepetindeki bir satır.
 class CartLine {
-  CartLine(this.ingredient, this.quantity, this.expiry);
+  CartLine(this.ingredient, this.quantity);
   final Ingredient ingredient;
   double quantity;
-  DateTime expiry;
 }
 
 /// Sunucudan gelen değişiklikler uygulanırken bu anahtar varsa tetikleyiciler
@@ -158,7 +178,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'akilli_mutfak'));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -169,6 +189,16 @@ class AppDatabase extends _$AppDatabase {
         onUpgrade: (m, from, to) async {
           if (from < 2) await m.createTable(syncOutbox);
           if (from < 3) await m.createTable(mealPlans);
+          if (from < 4) {
+            await m.addColumn(pantryItems, pantryItems.status);
+            await m.addColumn(pantryItems, pantryItems.statusAt);
+          }
+          if (from < 5 && from >= 3) {
+            await m.addColumn(mealPlans, mealPlans.meal);
+          }
+          if (from < 6 && from >= 3) {
+            await m.addColumn(mealPlans, mealPlans.servings);
+          }
           await _createOutboxTriggers();
           if (from < 2) await enqueueAllForSync();
         },
@@ -363,11 +393,27 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<PantryEntry>> watchPantry() {
     final q = _pantryJoin()
       ..where(pantryItems.outcome.isNull() & pantryItems.deletedAt.isNull())
-      ..orderBy([
-        OrderingTerm.asc(pantryItems.expiryDate),
-        OrderingTerm.asc(ingredients.name),
-      ]);
+      ..orderBy([OrderingTerm.asc(ingredients.name)]);
     return q.watch().map(_mapPantry);
+  }
+
+  /// Son 180 günde her ürünün dolaba giriş zamanları (alım sıklığı için).
+  Stream<Map<String, List<DateTime>>> watchPurchaseHistory() {
+    final since = DateTime.now().subtract(const Duration(days: 180));
+    final q = selectOnly(pantryItems)
+      ..addColumns([pantryItems.ingredientId, pantryItems.addedAt])
+      ..where(pantryItems.deletedAt.isNull() &
+          pantryItems.addedAt.isBiggerOrEqualValue(since))
+      ..orderBy([OrderingTerm.asc(pantryItems.addedAt)]);
+    return q.watch().map((rows) {
+      final history = <String, List<DateTime>>{};
+      for (final r in rows) {
+        history
+            .putIfAbsent(r.read(pantryItems.ingredientId)!, () => [])
+            .add(r.read(pantryItems.addedAt)!);
+      }
+      return history;
+    });
   }
 
   /// Tüketilen / çöpe giden ürünler (istatistik ekranı için).
@@ -392,7 +438,7 @@ class AppDatabase extends _$AppDatabase {
             ingredientId: l.ingredient.id,
             quantity: l.quantity,
             unit: l.ingredient.unit,
-            expiryDate: dateOnly(l.expiry),
+            expiryDate: addDays(now, l.ingredient.shelfDays),
             addedAt: now,
             updatedAt: now,
           ),
@@ -400,15 +446,43 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  Future<void> updatePantryItem(String id,
-      {double? quantity, DateTime? expiry}) {
+  Future<void> updatePantryItem(String id, {double? quantity}) {
     return (update(pantryItems)..where((t) => t.id.equals(id))).write(
       PantryItemsCompanion(
         quantity: quantity == null ? const Value.absent() : Value(quantity),
-        expiryDate: expiry == null ? const Value.absent() : Value(dateOnly(expiry)),
         updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  /// "Azaldı" / "Var" işaretler; aynı durumu tekrar vermek "hâlâ var"
+  /// onayıdır ve bitme tahminini bugünden yeniden başlatır.
+  Future<void> setPantryStatus(String id, String status) {
+    final now = DateTime.now();
+    return (update(pantryItems)..where((t) => t.id.equals(id))).write(
+      PantryItemsCompanion(
+        status: Value(status),
+        statusAt: Value(now),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  /// "Bitti": ürün tüketildi olarak dolaptan çıkar ve listede yoksa
+  /// alışveriş listesine eklenir. Geri alma için eklenen liste kaydının
+  /// kimliğini döndürür.
+  Future<String?> finishPantryItem(PantryEntry e) {
+    return transaction(() async {
+      await setPantryOutcome(e.item.id, Outcome.consumed);
+      return _addToShoppingIfMissing(e.ingredient, source: 'finished');
+    });
+  }
+
+  Future<void> undoFinishPantryItem(String pantryId, String? shoppingId) {
+    return transaction(() async {
+      await setPantryOutcome(pantryId, null);
+      if (shoppingId != null) await deleteShoppingItem(shoppingId);
+    });
   }
 
   /// [outcome]: [Outcome.consumed] veya [Outcome.wasted]; null geri alır.
@@ -481,22 +555,33 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  /// Döngünün kalbi: işaretlenen ürün tahmini SKT ile dolaba girer,
-  /// işaret kaldırılırsa dolaptan geri çıkar. İşaretlenince SKT'yi döndürür.
-  Future<DateTime?> toggleShopping(ShoppingEntry e) async {
+  /// Döngünün kalbi: işaretlenen ürün dolaba girer, işaret kaldırılırsa
+  /// dolaptan geri çıkar. Dolaba eklendiyse true döner.
+  Future<bool> toggleShopping(ShoppingEntry e) async {
     final hh = await householdId();
     return transaction(() async {
       final now = DateTime.now();
       if (e.item.checkedAt == null) {
+        // Yenisi alındı: aynı üründen "azaldı" olarak duranlar bitmiş sayılır.
+        await (update(pantryItems)
+              ..where((t) =>
+                  t.ingredientId.equals(e.ingredient.id) &
+                  t.status.equals(StockStatus.low) &
+                  t.outcome.isNull() &
+                  t.deletedAt.isNull()))
+            .write(PantryItemsCompanion(
+          outcome: const Value(Outcome.consumed),
+          removedAt: Value(now),
+          updatedAt: Value(now),
+        ));
         final pantryId = _uuid.v4();
-        final expiry = addDays(now, e.ingredient.shelfDays);
         await into(pantryItems).insert(PantryItemsCompanion.insert(
           id: pantryId,
           householdId: hh,
           ingredientId: e.ingredient.id,
           quantity: e.item.quantity,
           unit: e.item.unit,
-          expiryDate: expiry,
+          expiryDate: addDays(now, e.ingredient.shelfDays),
           addedAt: now,
           updatedAt: now,
         ));
@@ -506,7 +591,7 @@ class AppDatabase extends _$AppDatabase {
           pantryItemId: Value(pantryId),
           updatedAt: Value(now),
         ));
-        return expiry;
+        return true;
       }
       final pantryId = e.item.pantryItemId;
       if (pantryId != null) {
@@ -524,7 +609,7 @@ class AppDatabase extends _$AppDatabase {
         pantryItemId: const Value(null),
         updatedAt: Value(now),
       ));
-      return null;
+      return false;
     });
   }
 
@@ -544,34 +629,42 @@ class AppDatabase extends _$AppDatabase {
 
   // ------------------------------------------------------------ Yemek planı
 
-  /// Tariflerin eksik malzemelerini listeye ekler; listede zaten alınmayı
-  /// bekleyenleri atlar. Eklenen ürün sayısını döndürür.
-  Future<int> addMissingToShopping(Iterable<Ingredient> missing) async {
-    final hh = await householdId();
+  /// Ürünleri listeye ekler; listede zaten alınmayı bekleyenleri atlar.
+  /// Eklenen ürün sayısını döndürür.
+  Future<int> addMissingToShopping(Iterable<Ingredient> missing,
+      {String source = 'plan'}) {
     return transaction(() async {
-      final pending = (await (select(shoppingItems)
-                ..where((t) => t.checkedAt.isNull() & t.deletedAt.isNull()))
-              .get())
-          .map((s) => s.ingredientId)
-          .toSet();
       var added = 0;
       for (final i in missing) {
-        if (!pending.add(i.id)) continue;
-        final now = DateTime.now();
-        await into(shoppingItems).insert(ShoppingItemsCompanion.insert(
-          id: _uuid.v4(),
-          householdId: hh,
-          ingredientId: i.id,
-          quantity: i.defaultQty,
-          unit: i.unit,
-          source: const Value('plan'),
-          createdAt: now,
-          updatedAt: now,
-        ));
-        added++;
+        if (await _addToShoppingIfMissing(i, source: source) != null) added++;
       }
       return added;
     });
+  }
+
+  Future<String?> _addToShoppingIfMissing(Ingredient i,
+      {required String source}) async {
+    final pending = await (select(shoppingItems)
+          ..where((t) =>
+              t.ingredientId.equals(i.id) &
+              t.checkedAt.isNull() &
+              t.deletedAt.isNull())
+          ..limit(1))
+        .getSingleOrNull();
+    if (pending != null) return null;
+    final id = _uuid.v4();
+    final now = DateTime.now();
+    await into(shoppingItems).insert(ShoppingItemsCompanion.insert(
+      id: id,
+      householdId: await householdId(),
+      ingredientId: i.id,
+      quantity: i.defaultQty,
+      unit: i.unit,
+      source: Value(source),
+      createdAt: now,
+      updatedAt: now,
+    ));
+    return id;
   }
 
   Stream<List<MealPlan>> watchMealPlans(DateTime from, DateTime to) {
@@ -598,6 +691,42 @@ class AppDatabase extends _$AppDatabase {
       createdAt: now,
       updatedAt: now,
     ));
+  }
+
+  /// Önerilen planı yazar: [days] içindeki günlerin mevcut planı [replace]
+  /// ise silinir. Sıra korunur (öğün sırasıyla eklenir).
+  Future<void> applyMealPlan(
+    Map<DateTime, List<({String recipeId, String meal, double servings})>> days, {
+    required bool replace,
+  }) async {
+    final hh = await householdId();
+    await transaction(() async {
+      var now = DateTime.now();
+      if (replace) {
+        await (update(mealPlans)
+              ..where((t) =>
+                  t.deletedAt.isNull() &
+                  t.day.isIn(days.keys.map(dateOnly))))
+            .write(MealPlansCompanion(
+                deletedAt: Value(now), updatedAt: Value(now)));
+      }
+      for (final MapEntry(key: day, value: meals) in days.entries) {
+        for (final m in meals) {
+          // Aynı gün içindeki sıra createdAt ile belirlenir.
+          now = now.add(const Duration(milliseconds: 1));
+          await into(mealPlans).insert(MealPlansCompanion.insert(
+            id: _uuid.v4(),
+            householdId: hh,
+            day: dateOnly(day),
+            recipeId: m.recipeId,
+            meal: Value(m.meal),
+            servings: Value(m.servings),
+            createdAt: now,
+            updatedAt: now,
+          ));
+        }
+      }
+    });
   }
 
   Future<void> deleteMealPlan(String id) {

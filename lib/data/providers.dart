@@ -17,6 +17,9 @@ final frequentProvider = StreamProvider<List<Ingredient>>(
 final pantryProvider = StreamProvider<List<PantryEntry>>(
     (ref) => ref.watch(databaseProvider).watchPantry());
 
+final purchaseHistoryProvider = StreamProvider<Map<String, List<DateTime>>>(
+    (ref) => ref.watch(databaseProvider).watchPurchaseHistory());
+
 final shoppingProvider = StreamProvider<List<ShoppingEntry>>(
     (ref) => ref.watch(databaseProvider).watchShopping());
 

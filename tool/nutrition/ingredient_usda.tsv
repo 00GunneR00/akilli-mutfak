@@ -1,0 +1,177 @@
+# Malzeme → USDA SR Legacy kaydı (fdc_id). Kaynak: USDA National Nutrient Database
+# for Standard Reference, Legacy Release (2018), kamu malı (CC0).
+# Sütunlar: malzeme<TAB>fdc_id<TAB>çarpan<TAB>not. fdc_id 0 = enerjisiz (su vb.).
+# Çarpan: USDA değeri × çarpan (ör. ayran = yoğurdun yarısı + su).
+Ahududu	167755	1	Raspberries, raw
+Antep Fıstığı	170184	1	Nuts, pistachio nuts, raw
+Armut	167776	1	Pears, raw, bartlett
+Asma Yaprağı	169393	1	Grape leaves, canned (salamura)
+Avokado	171705	1	Avocados, raw
+Ayran	171284	0.5	Yogurt, plain, whole milk — ayran: 1 ölçü yoğurt + 1 ölçü su
+Ayçiçek Yağı	171025	1	Oil, sunflower
+Aşurelik Buğday	169719	1	Wheat, hard white
+Badem	170567	1	Nuts, almonds
+Bal	169640	1	Honey
+Balkabağı	168448	1	Pumpkin, raw
+Bamya	169260	1	Okra, raw
+Barbunya	175189	1	Beans, cranberry (roman), mature seeds, raw
+Beyaz Peynir	173420	1	Cheese, feta — beyaz peynirin en yakın karşılığı
+Bezelye	170419	1	Peas, green, raw
+Biber Salçası	170459	1	Tomato paste — biber salçası için yakın değer
+Biberiye	171333	1	Spices, rosemary, dried
+Bisküvi	174950	1	Cookies, butter, commercially prepared
+Brokoli	170379	1	Broccoli, raw
+Bulgur	170688	1	Bulgur, dry
+Bütün Tavuk	171447	1	Chicken, broilers or fryers, meat and skin, raw
+Ceviz	170187	1	Nuts, walnuts, english
+Cheddar	170899	1	Cheese, cheddar, sharp
+Cherry Domates	170457	1	Tomatoes, red, ripe, raw
+Chia Tohumu	170554	1	Seeds, chia seeds, dried
+Ciğer	169451	1	Beef liver, raw
+Damla Çikolata	167976	1	Candies, semisweet chocolate
+Dana Döner	174032	1	Beef, ground 85/15, cooked — pişmiş döner için yakın değer
+Defne Yaprağı	170917	1	Spices, bay leaf
+Dereotu	172233	1	Dill weed, fresh
+Dolmalık Biber	170427	1	Peppers, sweet, green, raw
+Domates	170457	1	Tomatoes, red, ripe, raw
+Domates Salçası	170459	1	Tomato paste, canned
+Ekmek	174924	1	Bread, white, commercially prepared
+Ekşi Mayalı Ekmek	172675	1	Bread, french or vienna (includes sourdough)
+Elma	171688	1	Apples, raw, with skin
+Enginar	169205	1	Artichokes, raw
+Erişte	169731	1	Noodles, egg, dry
+Fesleğen	172232	1	Basil, fresh
+Fındık	170581	1	Nuts, hazelnuts
+Fıstık Ezmesi	172470	1	Peanut butter, smooth, without salt
+Galeta Unu	174928	1	Bread crumbs, dry
+Granola	171646	1	Granola, homemade
+Hamburger Ekmeği	172796	1	Rolls, hamburger, plain
+Hamburger Köftesi	174036	1	Beef, ground 80/20, raw
+Hamsi	174182	1	Fish, anchovy, european, raw
+Havuç	170393	1	Carrots, raw
+Hindistan Cevizi	170170	1	Coconut meat, desiccated, unsweetened
+Humus	174289	1	Hummus, commercial
+Hurma	168191	1	Dates, medjool
+Ispanak	168462	1	Spinach, raw
+Kabak	169291	1	Squash, zucchini, raw
+Kabartma Tozu	172803	1	Baking powder
+Kakao	169593	1	Cocoa, dry powder, unsweetened
+Kalamar	174223	1	Squid, raw
+Kapya Biber	170108	1	Peppers, sweet, red, raw
+Karabiber	170931	1	Spices, pepper, black
+Karides	175179	1	Shrimp, raw
+Karnabahar	169986	1	Cauliflower, raw
+Karpuz	167765	1	Watermelon, raw
+Kaşar Peyniri	170850	1	Cheese, provolone — kaşarın en yakın karşılığı
+Kefir	170904	1	Kefir, lowfat, plain
+Kekik	170938	1	Spices, thyme, dried
+Kereviz	169988	1	Celery, raw
+Ketçap	168556	1	Catsup
+Kimyon	170923	1	Spices, cumin seed
+Kivi	168153	1	Kiwifruit, green, raw
+Kornişon Turşu	168558	1	Pickles, cucumber, dill
+Krema	170859	1	Cream, heavy whipping
+Kuru Fasulye	175202	1	Beans, white, mature seeds, raw
+Kuru Kayısı	173941	1	Apricots, dried
+Kuru Nane	172239	1	Spearmint, dried
+Kuru Üzüm	168165	1	Raisins, dark, seedless
+Kuru İncir	174665	1	Figs, dried
+Kuvertür Çikolata	170272	1	Chocolate, dark, 60-69% cacao
+Kuzu İncik	172481	1	Lamb, foreshank, lean and fat, raw
+Kuşbaşı Et	169534	1	Beef, round, top round, lean and fat, raw
+Köftelik Bulgur	170688	1	Bulgur, dry
+Köri	170924	1	Spices, curry powder
+Kırmızı Mercimek	174284	1	Lentils, pink or red, raw
+Kırmızı Soğan	170000	1	Onions, raw
+Kıyma	171796	1	Beef, ground 85/15, raw — orta yağlı kıyma
+Lahana	169975	1	Cabbage, raw
+Lavaş	174915	1	Bread, pita, white
+Lazanya	169736	1	Pasta, dry
+Leblebi	173756	1	Chickpeas, mature seeds, raw (kuru ağırlık)
+Levrek	175142	1	Fish, sea bass, raw
+Limon	167747	1	Lemon juice, raw
+Lor Peyniri	172182	1	Cheese, cottage, lowfat 2% — lor için yakın değer
+Maden Suyu	0	1	enerjisiz
+Makarna	169736	1	Pasta, dry
+Mango	169910	1	Mangos, raw
+Mantar	169251	1	Mushrooms, white, raw
+Mantı	169727	1	Pasta, fresh — hazır mantı için yakın değer
+Marul	169247	1	Lettuce, cos or romaine, raw
+Maya	175043	1	Yeast, active dry
+Maydanoz	170416	1	Parsley, fresh
+Mayonez	171009	1	Mayonnaise, regular
+Mozzarella	170845	1	Cheese, mozzarella, whole milk
+Muz	173944	1	Bananas, raw
+Mısır Konservesi	169214	1	Corn, sweet, canned, drained
+Mısır Unu	169697	1	Cornmeal, whole-grain, yellow
+Nar	169134	1	Pomegranates, raw
+Nar Ekşisi	168820	1	Molasses — nar ekşisi için yakın değer
+Nişasta	169698	1	Cornstarch
+Nohut	173756	1	Chickpeas, mature seeds, raw (kuru ağırlık)
+Nohut Konservesi	173800	1	Chickpeas, canned, drained
+Palamut	173706	1	Fish, tuna, bluefin, raw — palamut için yakın değer
+Parmesan	170848	1	Cheese, parmesan, hard
+Pastırma	170604	1	Beef, cured, dried
+Patates	170026	1	Potatoes, flesh and skin, raw
+Patlıcan	169228	1	Eggplant, raw
+Penne	169736	1	Pasta, dry
+Pesto	171579	1	Sauce, pesto, ready-to-serve
+Pide	174915	1	Bread, pita, white
+Pirinç	168877	1	Rice, white, long-grain, raw
+Pirinç Unu	169714	1	Rice flour, white
+Portakal	169097	1	Oranges, raw
+Protein Tozu	173180	1	Protein powder, whey based
+Pudra Şekeri	169656	1	Sugars, powdered
+Pul Biber	170932	1	Spices, pepper, red or cayenne
+Pırasa	169246	1	Leeks, raw
+Roka	169387	1	Arugula, raw
+Salatalık	168409	1	Cucumber, with peel, raw
+Sarımsak	169230	1	Garlic, raw
+Semizotu	169274	1	Purslane, raw
+Simit	174899	1	Bagels, plain (includes sesame) — simit için yakın değer
+Sirke	172237	1	Vinegar, distilled
+Sivri Biber	170427	1	Peppers, sweet, green, raw
+Somon	175167	1	Fish, salmon, Atlantic, farmed, raw
+Soya Sosu	174277	1	Soy sauce (shoyu)
+Soğan	170000	1	Onions, raw
+Spagetti	169736	1	Pasta, dry
+Sucuk	174582	1	Salami, dry or hard, pork, beef — sucuk için yakın değer
+Sumak	171329	1	Spices, paprika — sumak için yakın değer
+Süt	171265	1	Milk, whole, 3.25%
+Süzme Yoğurt	171304	1	Yogurt, Greek, plain, whole milk
+Tahin	168604	1	Sesame butter, tahini
+Tam Buğday Ekmeği	172688	1	Bread, whole-wheat
+Tarhana	168894	1	Wheat flour, all-purpose — kuru tarhana için yakın değer
+Tarçın	171320	1	Spices, cinnamon, ground
+Tatlı Toz Biber	171329	1	Spices, paprika
+Tavuk Bonfile	171077	1	Chicken breast, skinless, boneless, raw
+Tavuk But	172385	1	Chicken thigh, meat and skin, raw
+Tavuk Göğsü	171077	1	Chicken breast, skinless, boneless, raw
+Tavuk Kanat	172390	1	Chicken wing, meat and skin, raw
+Taze Fasulye	169961	1	Beans, snap, green, raw
+Taze Nane	173474	1	Peppermint, fresh
+Taze Soğan	170005	1	Onions, spring or scallions, raw
+Taze Zencefil	169231	1	Ginger root, raw
+Tel Şehriye	169736	1	Pasta, dry
+Tereyağı	173430	1	Butter, without salt
+Ton Balığı	173708	1	Tuna, light, canned in oil, drained
+Tost Ekmeği	174924	1	Bread, white, commercially prepared
+Toz Şeker	169655	1	Sugars, granulated
+Tuz	173468	1	Salt, table
+Un	168894	1	Wheat flour, white, all-purpose
+Vanilin	172236	1	Vanilla extract, imitation, no alcohol
+Yaban Mersini	171711	1	Blueberries, raw
+Yenibahar	171315	1	Spices, allspice, ground
+Yeşil Elma	171688	1	Apples, raw, with skin
+Yeşil Mercimek	172420	1	Lentils, raw
+Yoğurt	171284	1	Yogurt, plain, whole milk
+Yufka	172791	1	Phyllo dough
+Yulaf	173904	1	Oats, dry
+Yumurta	171287	1	Egg, whole, raw
+Zeytin	169096	1	Olives, pickled, green
+Zeytinyağı	171413	1	Oil, olive
+Çilek	167762	1	Strawberries, raw
+Çipura	175142	1	Fish, sea bass, raw — çipura için yakın değer
+İrmik	169715	1	Semolina
+İsot	170932	1	Spices, pepper, red or cayenne
+Şehriye	169736	1	Pasta, dry

@@ -30,14 +30,6 @@ enum Freshness {
       };
 }
 
-String expiryLabel(int days) => switch (days) {
-      < -1 => '${-days} gün önce doldu',
-      -1 => 'Dün doldu',
-      0 => 'Bugün son gün',
-      1 => 'Yarın son gün',
-      _ => '$days gün kaldı',
-    };
-
 final _short = DateFormat('d MMM', 'tr');
 String shortDate(DateTime d) => _short.format(d);
 

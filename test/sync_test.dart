@@ -37,7 +37,7 @@ void main() {
   test('katalog outbox\'a girmez, kullanıcı verisi girer', () async {
     expect(await outbox(), isEmpty);
 
-    await db.addToPantry([CartLine(await ing('Süt'), 1, DateTime.now())]);
+    await db.addToPantry([CartLine(await ing('Süt'), 1)]);
     await db.createCustomIngredient(
         name: 'Ev Yapımı Reçel', category: 'Kahvaltılık', unit: 'adet');
 
@@ -112,7 +112,7 @@ void main() {
   });
 
   test('haneye katılınca yerel veri yeni haneye taşınır', () async {
-    await db.addToPantry([CartLine(await ing('Süt'), 1, DateTime.now())]);
+    await db.addToPantry([CartLine(await ing('Süt'), 1)]);
     await db.delete(db.syncOutbox).go();
     await db.setValue('sync.pulled.pantry_items', 'x');
 
