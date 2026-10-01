@@ -7,3 +7,6 @@ const supabaseKey = String.fromEnvironment('SUPABASE_KEY',
 
 /// main() Supabase'i başlatınca true olur; testlerde senkronizasyon kapalı kalır.
 bool supabaseReady = false;
+
+/// Tanıtım videosu modu: ayrı yerel veritabanı, örnek veri, senkronizasyon yok.
+const demoMode = bool.fromEnvironment('DEMO');

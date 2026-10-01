@@ -15,8 +15,10 @@ import 'features/stats/stats_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('tr');
-  await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseKey);
-  supabaseReady = true;
+  if (!demoMode) {
+    await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseKey);
+    supabaseReady = true;
+  }
 
   final container = ProviderContainer();
   // Senkronizasyon ekran açılmasını beklemeden başlasın.

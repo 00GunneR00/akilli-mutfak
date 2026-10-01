@@ -1,9 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:drift_flutter/drift_flutter.dart';
+
+import '../core/env.dart';
 import 'database.dart';
+import 'demo_seed.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
-  final db = AppDatabase();
+  final db = demoMode
+      ? AppDatabase(driftDatabase(name: 'akilli_mutfak_demo'))
+      : AppDatabase();
+  if (demoMode) seedDemo(db);
   ref.onDispose(db.close);
   return db;
 });
